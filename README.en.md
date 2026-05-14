@@ -1,6 +1,6 @@
 # Weixin Codex Bridge
 
-[![ci](https://github.com/leilong611-ai/weixin-codex-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/leilong611-ai/weixin-codex-bridge/actions/workflows/ci.yml)
+[![ci](https://github.com/workhard211/weixin-codex-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/workhard211/weixin-codex-bridge/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 A standalone bridge from Weixin direct messages to Codex. It reads an existing Weixin/OpenClaw bot account, polls text messages, sends the original text to Codex, and returns plain-text replies to Weixin.
@@ -51,7 +51,7 @@ flowchart LR
 ## Quick Start
 
 ```powershell
-git clone https://github.com/leilong611-ai/weixin-codex-bridge.git
+git clone https://github.com/workhard211/weixin-codex-bridge.git
 cd weixin-codex-bridge
 npm install
 Copy-Item .env.example .env

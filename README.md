@@ -1,6 +1,6 @@
 # Weixin Codex Bridge
 
-[![ci](https://github.com/leilong611-ai/weixin-codex-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/leilong611-ai/weixin-codex-bridge/actions/workflows/ci.yml)
+[![ci](https://github.com/workhard211/weixin-codex-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/workhard211/weixin-codex-bridge/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 一个独立的微信到 Codex 桥接器。它直接读取已登录的 Weixin/OpenClaw bot 账号凭据，轮询微信私聊文本消息，把原始文本转交给 Codex，再把纯文本回复发回微信。
@@ -51,7 +51,7 @@ flowchart LR
 ## 快速开始
 
 ```powershell
-git clone https://github.com/leilong611-ai/weixin-codex-bridge.git
+git clone https://github.com/workhard211/weixin-codex-bridge.git
 cd weixin-codex-bridge
 npm install
 Copy-Item .env.example .env
