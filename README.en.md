@@ -45,8 +45,14 @@ flowchart LR
 
 - Node.js `>= 22`
 - Codex Desktop or Codex CLI installed and authenticated
-- A local Weixin/OpenClaw bot account already logged in
+- A local bot account credential set created by a Weixin/OpenClaw login
 - Windows 10/11 is recommended for Desktop UI automation; CLI mode can run in a more generic shell environment
+
+## Do Users Need OpenClaw First?
+
+For the current version, yes: a first-time user needs to complete the Tencent Weixin OpenClaw login once so the machine has bot account credentials such as `openclaw-weixin/accounts.json`. At runtime, this bridge only reads those credentials. It does not take over OpenClaw routing, and OpenClaw or an older bridge does not need to stay running.
+
+In short: **initial setup reuses OpenClaw's login and credential path; daily bridge operation does not require OpenClaw to be running**. The launcher also checks ports `18789` and `8787` to avoid colliding with OpenClaw or an older bridge.
 
 ## Quick Start
 

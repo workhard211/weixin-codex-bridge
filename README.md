@@ -45,8 +45,14 @@ flowchart LR
 
 - Node.js `>= 22`
 - 已安装并登录 Codex Desktop 或 Codex CLI
-- 本机已有 Weixin/OpenClaw bot 账号凭据
+- 本机已有通过 Weixin/OpenClaw 登录生成的 bot 账号凭据
 - Windows 10/11 推荐用于 Desktop UI 自动化；CLI 模式可用于更普通的 shell 环境
+
+## 是否必须先安装 OpenClaw？
+
+当前版本需要先用 Tencent Weixin OpenClaw 登录一次，让本机生成 `openclaw-weixin/accounts.json` 等 bot 账号凭据。桥接器运行时只读这些凭据，不接管 OpenClaw 路由，也不要求 OpenClaw 或旧桥继续运行。
+
+换句话说：**第一次配置需要借用 OpenClaw 的登录/凭据链路；日常运行这个桥时不需要把 OpenClaw 开着**。启动脚本还会检查 `18789` 和 `8787`，避免它和 OpenClaw/旧桥同时占用同一套本地服务。
 
 ## 快速开始
 
