@@ -25,6 +25,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest",
+    "preinit": "npm run build",
+    "init": "node dist/cli.js init",
     "prestart": "npm run build",
     "start": "node dist/cli.js start",
     "prelogin": "npm run build",

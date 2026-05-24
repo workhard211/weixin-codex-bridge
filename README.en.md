@@ -60,24 +60,19 @@ No. The current version includes a Weixin bot QR login flow: run `npm run login`
 git clone https://github.com/workhard211/weixin-codex-bridge.git
 cd weixin-codex-bridge
 npm install
-Copy-Item .env.example .env
+npm run init
+npm run login
+npm start
 ```
 
-Edit `.env`; usually the only value you need to confirm first is the Codex workspace:
-
-```dotenv
-CODEX_WEIXIN_CWD=C:\work\my-codex-project
-CODEX_WEIXIN_DELIVERY_MODE=desktop-ui
-```
+`npm run init` creates or updates the current directory's `.env`; usually the only value you need to confirm is the Codex workspace. You can also copy and edit the template manually: `Copy-Item .env.example .env`.
 
 Note: the app automatically loads `.env` from the current directory. Values already exported by your shell, terminal profile, process manager, or CI secrets take priority. `.env.example` is a public template only; never commit real credentials.
 
-Temporary PowerShell example:
+Non-interactive PowerShell setup example:
 
 ```powershell
-$env:CODEX_WEIXIN_CWD = "C:\work\my-codex-project"
-$env:CODEX_WEIXIN_DELIVERY_MODE = "desktop-ui"
-
+npm run init -- --workspace "C:\work\my-codex-project" --delivery-mode desktop-ui
 npm run login
 npm start
 ```
@@ -125,7 +120,7 @@ It also reads the current directory's `.env`, then performs read-only checks for
 ## Most Common Configuration Failures
 
 - Missing Weixin credentials: run `npm run login` and scan the QR code. If reusing old OpenClaw credentials, set `OPENCLAW_STATE_DIR` to the state root that contains `openclaw-weixin/accounts.json`.
-- Missing `CODEX_WEIXIN_CWD`: Codex may run in the wrong project or fail immediately. Set it to the real workspace Codex should operate in.
+- Missing `CODEX_WEIXIN_CWD`: run `npm run init` and set it to the real workspace Codex should operate in.
 - `CODEX_WEIXIN_MAX_PARALLEL>1` in `desktop-ui`: this is ignored because one Codex Desktop window must stay single-lane.
 - Wrong `CODEX_WEIXIN_DESKTOP_INPUT_SCRIPT` or `CODEX_WEIXIN_DESKTOP_MODEL_SCRIPT`: input detection, paste, or model switching will fail.
 - `codex-cli` or `CODEX_WEIXIN_CLI_FALLBACK=true` with a broken `CODEX_CMD_PATH`: CLI fallback will fail.
@@ -136,6 +131,7 @@ The console `Run Diagnostics` action now lists these configuration checks with f
 ## NPM Scripts
 
 ```powershell
+npm run init           # Build automatically and create/update .env
 npm run login          # Build automatically and scan a Weixin bot QR code
 npm start              # Build automatically and start the bridge
 npm run build          # Compile TypeScript into dist/

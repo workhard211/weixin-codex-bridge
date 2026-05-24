@@ -60,24 +60,19 @@ flowchart LR
 git clone https://github.com/workhard211/weixin-codex-bridge.git
 cd weixin-codex-bridge
 npm install
-Copy-Item .env.example .env
+npm run init
+npm run login
+npm start
 ```
 
-编辑 `.env`，通常只需要先确认 Codex 工作目录；其他值都有默认值：
-
-```dotenv
-CODEX_WEIXIN_CWD=C:\work\my-codex-project
-CODEX_WEIXIN_DELIVERY_MODE=desktop-ui
-```
+`npm run init` 会生成或更新当前目录的 `.env`，通常只需要确认 Codex 工作目录；其他值都有默认值。也可以手动复制模板再编辑：`Copy-Item .env.example .env`。
 
 说明：项目从当前目录自动加载 `.env`，shell、Windows Terminal profile、进程管理器或 CI secret 中已经存在的环境变量会优先生效。`.env.example` 只是公开模板，真实凭据不要提交。
 
-PowerShell 临时启动示例：
+PowerShell 非交互初始化示例：
 
 ```powershell
-$env:CODEX_WEIXIN_CWD = "C:\work\my-codex-project"
-$env:CODEX_WEIXIN_DELIVERY_MODE = "desktop-ui"
-
+npm run init -- --workspace "C:\work\my-codex-project" --delivery-mode desktop-ui
 npm run login
 npm start
 ```
@@ -125,7 +120,7 @@ powershell -ExecutionPolicy Bypass -File scripts\Test-CodexWeixinSetup.ps1
 ## 最容易配置失败的地方
 
 - 微信账号凭据缺失：先运行 `npm run login` 扫码；如果要复用旧 OpenClaw 凭据，再设置 `OPENCLAW_STATE_DIR` 指向包含 `openclaw-weixin/accounts.json` 的状态目录。
-- `CODEX_WEIXIN_CWD` 不存在：Codex 会在错误项目里运行或直接失败。设成要让 Codex 操作的真实项目目录。
+- `CODEX_WEIXIN_CWD` 不存在：先运行 `npm run init`，把它设成要让 Codex 操作的真实项目目录。
 - `desktop-ui` 下误配 `CODEX_WEIXIN_MAX_PARALLEL>1`：这个值会被忽略，因为单个 Codex Desktop 窗口必须单通道。
 - `CODEX_WEIXIN_DESKTOP_INPUT_SCRIPT` 或 `CODEX_WEIXIN_DESKTOP_MODEL_SCRIPT` 路径不对：会导致输入框检测、粘贴或模型切换失败。
 - 开启 `codex-cli` 或 `CODEX_WEIXIN_CLI_FALLBACK=true` 但 `CODEX_CMD_PATH` 不可用：CLI fallback 会失败。
@@ -136,6 +131,7 @@ powershell -ExecutionPolicy Bypass -File scripts\Test-CodexWeixinSetup.ps1
 ## NPM 脚本
 
 ```powershell
+npm run init           # 自动编译并生成/更新 .env
 npm run login          # 自动编译并扫码登录微信 bot
 npm start              # 自动编译并启动桥接器
 npm run build          # 编译 TypeScript 到 dist/

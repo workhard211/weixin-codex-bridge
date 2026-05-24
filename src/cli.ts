@@ -4,10 +4,12 @@ import { listWeixinAccountIds } from "./accountStore.js";
 import { buildConfigDiagnostics } from "./configDiagnostics.js";
 import { startConsoleServer } from "./consoleServer.js";
 import { loginWeixinAccount } from "./weixinLogin.js";
+import { runBeginnerSetup } from "./setupWizard.js";
 
 function printHelp(): void {
   console.log(`
 Usage:
+  node dist/cli.js init
   node dist/cli.js login
   node dist/cli.js start
   node dist/cli.js serve
@@ -15,6 +17,9 @@ Usage:
 
 Options:
   --workspace <path>   Codex workspace root
+  --config-file <path> .env file to write/read
+  --delivery-mode <mode> desktop-ui or codex-cli
+  --console-port <port> local console port
   --auth-root <path>   Weixin credential root used by this bridge
   --base-url <url>     Weixin login/API base URL
   --bot-type <id>      Weixin bot type, defaults to 3
@@ -61,6 +66,9 @@ function applyArgEnv(args: CliArgs): void {
   if (typeof args["bot-type"] === "string") {
     process.env.CODEX_WEIXIN_BOT_TYPE = args["bot-type"];
   }
+  if (typeof args["config-file"] === "string") {
+    process.env.CODEX_WEIXIN_ENV_FILE = args["config-file"];
+  }
 }
 
 async function main(): Promise<void> {
@@ -71,6 +79,16 @@ async function main(): Promise<void> {
     return;
   }
   applyArgEnv(args);
+
+  if (command === "init") {
+    await runBeginnerSetup({
+      consolePort: typeof args["console-port"] === "string" ? Number.parseInt(args["console-port"], 10) : undefined,
+      deliveryMode: args["delivery-mode"] === "codex-cli" ? "codex-cli" : "desktop-ui",
+      envPath: typeof args["config-file"] === "string" ? args["config-file"] : undefined,
+      workspace: typeof args.workspace === "string" ? args.workspace : undefined
+    });
+    return;
+  }
 
   const config = loadBridgeConfig();
 
