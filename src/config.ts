@@ -1,6 +1,8 @@
 import os from "node:os";
 import path from "node:path";
 
+import dotenv from "dotenv";
+
 import { findLatestDesktopSessionId } from "./codexSession.js";
 
 export interface BridgeConfig {
@@ -26,7 +28,19 @@ export interface BridgeConfig {
   resumeAllSessions: boolean;
   resumeLast: boolean;
   skipBacklogOnStart: boolean;
+  weixinBaseUrl: string;
+  weixinBotType: string;
   weixinChannelVersion: string;
+}
+
+const DEFAULT_WEIXIN_BASE_URL = "https://ilinkai.weixin.qq.com";
+const DEFAULT_WEIXIN_BOT_TYPE = "3";
+
+function loadLocalEnv(): void {
+  dotenv.config({
+    path: process.env.CODEX_WEIXIN_ENV_FILE ?? path.join(process.cwd(), ".env"),
+    quiet: true
+  });
 }
 
 function boolEnv(name: string, defaultValue: boolean): boolean {
@@ -60,12 +74,15 @@ function defaultBridgeStateRoot(home: string): string {
 }
 
 export function loadBridgeConfig(): BridgeConfig {
+  loadLocalEnv();
+
   const home = os.homedir();
-  const openclawStateRoot = process.env.OPENCLAW_STATE_DIR ??
-    path.join(home, ".openclaw");
   const bridgeStateRoot = configuredRootEnv("CODEX_WEIXIN_LOG_ROOT") ??
     configuredRootEnv("CODEX_WEIXIN_STATE_ROOT") ??
     defaultBridgeStateRoot(home);
+  const openclawStateRoot = configuredRootEnv("CODEX_WEIXIN_AUTH_ROOT") ??
+    configuredRootEnv("OPENCLAW_STATE_DIR") ??
+    path.join(bridgeStateRoot, "weixin-auth");
   const appData = process.env.APPDATA ?? path.join(home, "AppData", "Roaming");
   const codexHome = process.env.CODEX_HOME ?? path.join(home, ".codex");
   const codexCwd = process.env.CODEX_WEIXIN_CWD ?? process.cwd();
@@ -103,6 +120,8 @@ export function loadBridgeConfig(): BridgeConfig {
     resumeAllSessions: boolEnv("CODEX_WEIXIN_RESUME_ALL", true),
     resumeLast: boolEnv("CODEX_WEIXIN_RESUME_LAST", true),
     skipBacklogOnStart: boolEnv("CODEX_WEIXIN_SKIP_BACKLOG_ON_START", true),
+    weixinBaseUrl: process.env.CODEX_WEIXIN_BASE_URL ?? DEFAULT_WEIXIN_BASE_URL,
+    weixinBotType: process.env.CODEX_WEIXIN_BOT_TYPE ?? DEFAULT_WEIXIN_BOT_TYPE,
     weixinChannelVersion: process.env.CODEX_WEIXIN_CHANNEL_VERSION ?? "2.1.1"
   };
 }

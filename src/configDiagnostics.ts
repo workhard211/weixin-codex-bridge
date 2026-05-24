@@ -1,4 +1,5 @@
 import { existsSync as defaultExistsSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 import type { BridgeConfig } from "./config.js";
@@ -25,7 +26,8 @@ export function buildConfigDiagnostics(
   const env = options.env ?? process.env;
   const existsSync = options.existsSync ?? defaultExistsSync;
   const checks: ConfigDiagnosticCheck[] = [];
-  const accountIndexPath = path.join(config.openclawStateRoot, "openclaw-weixin", "accounts.json");
+  const accountIndexPaths = weixinAccountIndexPaths(config);
+  const accountIndexPath = accountIndexPaths[0];
 
   checks.push(pathCheck({
     detail: `Workspace path: ${config.codexCwd}`,
@@ -60,14 +62,7 @@ export function buildConfigDiagnostics(
     });
   }
 
-  checks.push(pathCheck({
-    detail: `Account index: ${accountIndexPath}`,
-    existsSync,
-    fix: "Run the existing Weixin/OpenClaw QR login first, then point OPENCLAW_STATE_DIR at that state root.",
-    label: "Weixin account index",
-    path: accountIndexPath,
-    severity: "error"
-  }));
+  checks.push(accountIndexCheck(accountIndexPaths, existsSync));
 
   if (config.deliveryMode === "desktop-ui") {
     checks.push(pathCheck({
@@ -112,6 +107,28 @@ export function buildConfigDiagnostics(
   }
 
   return checks;
+}
+
+function weixinAccountIndexPaths(config: BridgeConfig): string[] {
+  const primary = path.join(config.openclawStateRoot, "openclaw-weixin", "accounts.json");
+  const legacy = path.join(os.homedir(), ".openclaw", "openclaw-weixin", "accounts.json");
+  return legacy === primary ? [primary] : [primary, legacy];
+}
+
+function accountIndexCheck(
+  candidates: string[],
+  existsSync: (candidate: string) => boolean
+): ConfigDiagnosticCheck {
+  const found = candidates.find((candidate) => existsSync(candidate));
+  return {
+    detail: found
+      ? `Account index: ${found}`
+      : `Account index: ${candidates[0]} was not found.`,
+    fix: "Run npm run login to scan a Weixin QR code, or point OPENCLAW_STATE_DIR at an existing OpenClaw state root.",
+    label: "Weixin account index",
+    ok: Boolean(found),
+    severity: found ? "ok" : "error"
+  };
 }
 
 function pathCheck(params: {

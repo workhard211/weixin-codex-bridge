@@ -3,7 +3,7 @@
 [![ci](https://github.com/workhard211/weixin-codex-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/workhard211/weixin-codex-bridge/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-一个独立的微信到 Codex 桥接器。它直接读取已登录的 Weixin/OpenClaw bot 账号凭据，轮询微信私聊文本消息，把原始文本转交给 Codex，再把纯文本回复发回微信。
+一个独立的微信到 Codex 桥接器。它内置微信 bot 二维码登录，轮询微信私聊文本消息，把原始文本转交给 Codex，再把纯文本回复发回微信。
 
 English version: [README.en.md](./README.en.md)
 
@@ -16,16 +16,16 @@ English version: [README.en.md](./README.en.md)
 - 支持 Codex Desktop UI 投递，也可以切到 Codex CLI 模式。
 - 提供本地控制台端口，用于观察运行状态和重试失败任务。
 
-本项目不依赖 OpenClaw 的 channel routing、bindings 或多 agent 分发；它只复用本机已有的 Weixin/OpenClaw 账号凭据。
+本项目不依赖 OpenClaw 的 channel routing、bindings 或多 agent 分发；新用户直接在本项目里扫码登录即可，旧 OpenClaw 凭据只作为兼容 fallback 读取。
 
 ## 与其他桥的区别
 
-- **不是 OpenClaw 路由插件**：不接管 OpenClaw 的 channel routing、bindings 或多 agent 分发，也不改写 OpenClaw 配置；它只把已登录的 Weixin bot 账号当作只读消息入口。
+- **不是 OpenClaw 路由插件**：不接管 OpenClaw 的 channel routing、bindings 或多 agent 分发，也不改写 OpenClaw 配置；微信 bot 登录由本项目自己的 `npm run login` 完成。
 - **不是简单 CLI 转发器**：默认优先投递到 Codex Desktop UI，可以把微信消息落到正在使用的 Codex 桌面会话里；需要时也可以切到 Codex CLI 模式。
 - **不包装微信原文**：发给 Codex 的 prompt 保留微信文本本身，不自动拼接发送人、时间戳、路由提示或隐藏控制信息，避免污染 Codex 上下文。
 - **按微信会话维护状态**：每个微信会话有独立的本地状态、对话绑定、失败任务和记录镜像，方便排查“消息有没有真正进入 Codex”。
 - **面向桌面自动化可靠性**：桌面投递不是只靠固定坐标；脚本包含 UI Automation、DPI 感知、截图检测、校准缓存和投递前检测，适合窗口大小、显示比例变化的机器。
-- **本地优先、开源友好**：运行状态写入用户配置的本地目录，账号凭据只读复用；仓库提供预检脚本、公开发布检查、CI、故障任务处理和本地控制台，方便在新电脑复现。
+- **本地优先、开源友好**：运行状态和新登录凭据写入用户配置的本地目录，旧 OpenClaw 凭据只读兼容；仓库提供预检脚本、公开发布检查、CI、故障任务处理和本地控制台，方便在新电脑复现。
 
 ## 架构
 
@@ -45,14 +45,14 @@ flowchart LR
 
 - Node.js `>= 22`
 - 已安装并登录 Codex Desktop 或 Codex CLI
-- 本机已有通过 Weixin/OpenClaw 登录生成的 bot 账号凭据
+- 可使用本项目内置扫码登录生成微信 bot 账号凭据
 - Windows 10/11 推荐用于 Desktop UI 自动化；CLI 模式可用于更普通的 shell 环境
 
 ## 是否必须先安装 OpenClaw？
 
-当前版本需要先用 Tencent Weixin OpenClaw 登录一次，让本机生成 `openclaw-weixin/accounts.json` 等 bot 账号凭据。桥接器运行时只读这些凭据，不接管 OpenClaw 路由，也不要求 OpenClaw 或旧桥继续运行。
+不需要。当前版本已经内置微信 bot 二维码登录：运行 `npm run login` 后，用微信扫码确认，项目会把凭据保存到自己的状态目录，例如 `CODEX_WEIXIN_STATE_ROOT\weixin-auth\openclaw-weixin\accounts.json`。
 
-换句话说：**第一次配置需要借用 OpenClaw 的登录/凭据链路；日常运行这个桥时不需要把 OpenClaw 开着**。启动脚本还会检查 `18789` 和 `8787`，避免它和 OpenClaw/旧桥同时占用同一套本地服务。
+`OPENCLAW_STATE_DIR` 现在只是兼容旧用户：如果你以前已经用 OpenClaw 登录过，可以继续指向旧的 `openclaw-weixin` 状态目录；新用户直接用本项目登录即可，不需要额外下载或启动 OpenClaw。启动脚本仍会检查 `18789` 和 `8787`，避免和 OpenClaw/旧桥同时占用同一套本地服务。
 
 ## 快速开始
 
@@ -63,28 +63,23 @@ npm install
 Copy-Item .env.example .env
 ```
 
-编辑 `.env`，至少确认这些值：
+编辑 `.env`，通常只需要先确认 Codex 工作目录；其他值都有默认值：
 
 ```dotenv
 CODEX_WEIXIN_CWD=C:\work\my-codex-project
-CODEX_WEIXIN_STATE_ROOT=C:\work\codex-weixin-state
-OPENCLAW_STATE_DIR=C:\path\to\openclaw-state
 CODEX_WEIXIN_DELIVERY_MODE=desktop-ui
-CODEX_WEIXIN_CONSOLE_PORT=18790
 ```
 
-说明：项目不会自动加载 `.env`。你可以把这些值配置到 PowerShell、Windows Terminal profile、进程管理器或 CI secret 中；`.env.example` 只是公开模板，真实凭据不要提交。
+说明：项目从当前目录自动加载 `.env`，shell、Windows Terminal profile、进程管理器或 CI secret 中已经存在的环境变量会优先生效。`.env.example` 只是公开模板，真实凭据不要提交。
 
 PowerShell 临时启动示例：
 
 ```powershell
 $env:CODEX_WEIXIN_CWD = "C:\work\my-codex-project"
-$env:CODEX_WEIXIN_STATE_ROOT = "C:\work\codex-weixin-state"
-$env:OPENCLAW_STATE_DIR = "C:\path\to\openclaw-state"
 $env:CODEX_WEIXIN_DELIVERY_MODE = "desktop-ui"
 
-npm run build
-node dist/cli.js
+npm run login
+npm start
 ```
 
 如果你要绕开 Desktop UI，改用 Codex CLI：
@@ -92,7 +87,7 @@ node dist/cli.js
 ```powershell
 $env:CODEX_WEIXIN_DELIVERY_MODE = "codex-cli"
 $env:CODEX_WEIXIN_CLI_FALLBACK = "false"
-node dist/cli.js
+npm start
 ```
 
 ## 常用环境变量
@@ -100,8 +95,10 @@ node dist/cli.js
 | 变量 | 说明 |
 | --- | --- |
 | `CODEX_WEIXIN_CWD` | Codex 要工作的项目目录。 |
-| `OPENCLAW_STATE_DIR` | 只读读取 Weixin/OpenClaw 账号状态的根目录。 |
-| `OPENCLAW_CONFIG_PATH` | 可选，覆盖 OpenClaw 配置文件路径。 |
+| `CODEX_WEIXIN_ENV_FILE` | 可选，启动前在 shell 中设置，指定非默认 `.env` 文件路径。 |
+| `CODEX_WEIXIN_AUTH_ROOT` | 可选，微信登录凭据根目录；默认是 `CODEX_WEIXIN_STATE_ROOT\weixin-auth`。 |
+| `OPENCLAW_STATE_DIR` | 可选兼容项，读取已有 OpenClaw `openclaw-weixin` 账号状态。 |
+| `OPENCLAW_CONFIG_PATH` | 可选，读取旧 OpenClaw 配置中的 route tag。 |
 | `CODEX_WEIXIN_ACCOUNT_ID` | 可选，指定要使用的微信账号 ID；不填时使用账号列表中的第一个。 |
 | `CODEX_WEIXIN_STATE_ROOT` | 桥接器运行状态、日志和本地队列目录。 |
 | `CODEX_WEIXIN_LOG_ROOT` | 兼容旧名称；如果和 `CODEX_WEIXIN_STATE_ROOT` 同时设置，优先使用它。 |
@@ -123,11 +120,11 @@ npm run setup-check
 powershell -ExecutionPolicy Bypass -File scripts\Test-CodexWeixinSetup.ps1
 ```
 
-它会只读检查 Node/npm、已编译入口、Weixin 账号索引、Codex Desktop AppID、Codex 窗口、桌面输入/模型脚本、控制台状态，以及 `18789`/`8787` 端口占用；需要接到其他工具时可加 `-Json` 输出结构化结果。
+它同样会读取当前目录的 `.env`，然后只读检查 Node/npm、已编译入口、Weixin 账号索引、Codex Desktop AppID、Codex 窗口、桌面输入/模型脚本、控制台状态，以及 `18789`/`8787` 端口占用；需要接到其他工具时可加 `-Json` 输出结构化结果。
 
 ## 最容易配置失败的地方
 
-- `OPENCLAW_STATE_DIR` 指错：控制台诊断会提示 `Weixin account index` 缺失。先完成 Weixin/OpenClaw 登录，再指向包含 `openclaw-weixin/accounts.json` 的状态目录。
+- 微信账号凭据缺失：先运行 `npm run login` 扫码；如果要复用旧 OpenClaw 凭据，再设置 `OPENCLAW_STATE_DIR` 指向包含 `openclaw-weixin/accounts.json` 的状态目录。
 - `CODEX_WEIXIN_CWD` 不存在：Codex 会在错误项目里运行或直接失败。设成要让 Codex 操作的真实项目目录。
 - `desktop-ui` 下误配 `CODEX_WEIXIN_MAX_PARALLEL>1`：这个值会被忽略，因为单个 Codex Desktop 窗口必须单通道。
 - `CODEX_WEIXIN_DESKTOP_INPUT_SCRIPT` 或 `CODEX_WEIXIN_DESKTOP_MODEL_SCRIPT` 路径不对：会导致输入框检测、粘贴或模型切换失败。
@@ -139,6 +136,8 @@ powershell -ExecutionPolicy Bypass -File scripts\Test-CodexWeixinSetup.ps1
 ## NPM 脚本
 
 ```powershell
+npm run login          # 自动编译并扫码登录微信 bot
+npm start              # 自动编译并启动桥接器
 npm run build          # 编译 TypeScript 到 dist/
 npm test -- --run      # 运行测试
 npm run setup-check    # 运行本机配置预检
@@ -154,8 +153,8 @@ npm run public-check   # 发布前隐私和仓库卫生检查
 
 ## 参考资料
 
-- Tencent Weixin OpenClaw installer: <https://www.npmjs.com/package/@tencent-weixin/openclaw-weixin-cli>
-- Tencent Weixin OpenClaw plugin: <https://www.npmjs.com/package/@tencent-weixin/openclaw-weixin>
+- Tencent Weixin OpenClaw installer（仅旧凭据兼容参考，非必装）: <https://www.npmjs.com/package/@tencent-weixin/openclaw-weixin-cli>
+- Tencent Weixin OpenClaw plugin（仅旧凭据格式参考，非必装）: <https://www.npmjs.com/package/@tencent-weixin/openclaw-weixin>
 - ACPX: <https://www.npmjs.com/package/acpx>
 
 ## License

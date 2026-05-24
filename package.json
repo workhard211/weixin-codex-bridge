@@ -3,24 +3,49 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Standalone Weixin to Codex bridge without OpenClaw routing",
+  "description": "Standalone Weixin to Codex bridge with built-in QR login",
+  "files": [
+    ".env.example",
+    ".github",
+    "CONTRIBUTING.md",
+    "docs/open-source-checklist.md",
+    "LICENSE",
+    "README.en.md",
+    "README.md",
+    "scripts",
+    "SECURITY.md",
+    "src",
+    "test",
+    "tsconfig.json",
+    "vitest.config.ts"
+  ],
   "engines": {
     "node": ">=22"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest",
-    "start": "node src/cli.mjs start",
-    "login": "node src/cli.mjs login",
-    "serve": "node src/cli.mjs serve",
-    "logout": "node src/cli.mjs logout",
-    "doctor": "node src/cli.mjs doctor",
+    "prestart": "npm run build",
+    "start": "node dist/cli.js start",
+    "prelogin": "npm run build",
+    "login": "node dist/cli.js login",
+    "preserve": "npm run build",
+    "serve": "node dist/cli.js serve",
+    "predoctor": "npm run build",
+    "doctor": "node dist/cli.js doctor",
     "public-check": "node -e \"const cp=require('node:child_process'); const candidates=process.platform==='win32'?[process.env.GIT_BASH,'C:/Program Files/Git/bin/bash.exe','C:/Program Files (x86)/Git/bin/bash.exe','bash'].filter(Boolean):['bash']; for (const cmd of candidates){const r=cp.spawnSync(cmd,['./scripts/public-check.sh'],{stdio:'inherit'}); if(!r.error) process.exit(r.status ?? 0); if(r.error.code!=='ENOENT'){console.error(r.error.message); process.exit(1);}} console.error('Unable to find bash. Install Git Bash or run scripts/public-check.sh from a bash shell.'); process.exit(127);\"",
     "setup-check": "powershell -ExecutionPolicy Bypass -File scripts/Test-CodexWeixinSetup.ps1"
   },
   "dependencies": {
     "acpx": "0.3.1",
+    "dotenv": "^17.4.2",
     "qrcode": "1.5.4",
     "qrcode-terminal": "0.12.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.12.4",
+    "@types/qrcode": "^1.5.6",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.7"
   }
 }

@@ -1,4 +1,5 @@
 import path from "node:path";
+import os from "node:os";
 
 import { describe, expect, it } from "vitest";
 
@@ -72,6 +73,23 @@ describe("buildConfigDiagnostics", () => {
     });
 
     expect(checks.some((check) => check.label === "State root precedence")).toBe(false);
+  });
+
+  it("accepts a legacy OpenClaw account index as a compatibility fallback", () => {
+    const config = makeConfig("C:\\work\\project");
+    const legacyAccountIndex = path.join(os.homedir(), ".openclaw", "openclaw-weixin", "accounts.json");
+    const checks = buildConfigDiagnostics(config, {
+      env: {},
+      existsSync: (candidate) => candidate === legacyAccountIndex || candidate !== path.join(config.openclawStateRoot, "openclaw-weixin", "accounts.json")
+    });
+
+    expect(checks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        label: "Weixin account index",
+        ok: true,
+        severity: "ok"
+      })
+    ]));
   });
 });
 

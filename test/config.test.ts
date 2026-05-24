@@ -1,14 +1,19 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
 import { loadBridgeConfig } from "../src/config.js";
 
 const originalEnv = { ...process.env };
+const tempRoots: string[] = [];
 
 describe("loadBridgeConfig", () => {
   afterEach(() => {
     process.env = { ...originalEnv };
+    for (const root of tempRoots.splice(0)) {
+      rmSync(root, { force: true, recursive: true });
+    }
   });
 
   it("uses a Codex CLI model supported by the installed app by default", () => {
@@ -40,6 +45,65 @@ describe("loadBridgeConfig", () => {
 
     process.env.CODEX_WEIXIN_LOG_ROOT = "D:\\bridge-logs";
     expect(loadBridgeConfig().logRoot).toBe("D:\\bridge-logs");
+  });
+
+  it("loads local .env values before building the bridge config", () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), "weixin-env-"));
+    tempRoots.push(root);
+    const envPath = path.join(root, ".env");
+    writeFileSync(envPath, "CODEX_WEIXIN_CWD=C:\\work\\from-env-file\nCODEX_WEIXIN_CONSOLE_PORT=19991\n", "utf8");
+    delete process.env.CODEX_WEIXIN_CWD;
+    delete process.env.CODEX_WEIXIN_CONSOLE_PORT;
+    process.env.CODEX_WEIXIN_AUTO_DESKTOP_SESSION = "false";
+    process.env.CODEX_WEIXIN_ENV_FILE = envPath;
+
+    const config = loadBridgeConfig();
+
+    expect(config.codexCwd).toBe("C:\\work\\from-env-file");
+    expect(config.consolePort).toBe(19991);
+  });
+
+  it("keeps shell environment variables above local .env defaults", () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), "weixin-env-"));
+    tempRoots.push(root);
+    const envPath = path.join(root, ".env");
+    writeFileSync(envPath, "CODEX_WEIXIN_CWD=C:\\work\\from-env-file\n", "utf8");
+    process.env.CODEX_WEIXIN_CWD = "C:\\work\\from-shell";
+    process.env.CODEX_WEIXIN_AUTO_DESKTOP_SESSION = "false";
+    process.env.CODEX_WEIXIN_ENV_FILE = envPath;
+
+    expect(loadBridgeConfig().codexCwd).toBe("C:\\work\\from-shell");
+  });
+
+  it("defaults new Weixin auth state under the bridge state root", () => {
+    process.env.CODEX_WEIXIN_AUTO_DESKTOP_SESSION = "false";
+    process.env.CODEX_WEIXIN_STATE_ROOT = "D:\\bridge-state";
+    delete process.env.CODEX_WEIXIN_LOG_ROOT;
+    delete process.env.CODEX_WEIXIN_AUTH_ROOT;
+    delete process.env.OPENCLAW_STATE_DIR;
+
+    expect(loadBridgeConfig().openclawStateRoot).toBe(path.join("D:\\bridge-state", "weixin-auth"));
+  });
+
+  it("lets explicit Weixin auth roots override the bridge auth default", () => {
+    process.env.CODEX_WEIXIN_AUTO_DESKTOP_SESSION = "false";
+    process.env.CODEX_WEIXIN_STATE_ROOT = "D:\\bridge-state";
+    process.env.CODEX_WEIXIN_AUTH_ROOT = "D:\\weixin-auth";
+    delete process.env.OPENCLAW_STATE_DIR;
+
+    expect(loadBridgeConfig().openclawStateRoot).toBe("D:\\weixin-auth");
+
+    process.env.OPENCLAW_STATE_DIR = "D:\\legacy-openclaw";
+    expect(loadBridgeConfig().openclawStateRoot).toBe("D:\\weixin-auth");
+  });
+
+  it("uses legacy OpenClaw auth state only when this bridge has no auth root", () => {
+    process.env.CODEX_WEIXIN_AUTO_DESKTOP_SESSION = "false";
+    process.env.CODEX_WEIXIN_STATE_ROOT = "D:\\bridge-state";
+    delete process.env.CODEX_WEIXIN_AUTH_ROOT;
+    process.env.OPENCLAW_STATE_DIR = "D:\\legacy-openclaw";
+
+    expect(loadBridgeConfig().openclawStateRoot).toBe("D:\\legacy-openclaw");
   });
 
   it("lets CODEX_WEIXIN_MODEL override the bridge default", () => {

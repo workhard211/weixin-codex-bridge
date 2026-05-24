@@ -143,14 +143,20 @@ describe("desktop PowerShell automation scripts", () => {
     const pkg = JSON.parse(fs.readFileSync(path.join(projectRoot, "package.json"), "utf8"));
 
     expect(script).toContain("CODEX_WEIXIN_CWD");
+    expect(script).toContain("CODEX_WEIXIN_ENV_FILE");
+    expect(script).toContain("Import-BridgeEnv");
+    expect(script).toContain("does not override exported shell values");
     expect(script).toContain("CODEX_WEIXIN_STATE_ROOT");
+    expect(script).toContain("CODEX_WEIXIN_AUTH_ROOT");
     expect(script).toContain("OPENCLAW_STATE_DIR");
+    expect(script.indexOf("$env:CODEX_WEIXIN_AUTH_ROOT")).toBeLessThan(script.indexOf("$env:OPENCLAW_STATE_DIR"));
     expect(script).toContain("CODEX_WEIXIN_DELIVERY_MODE");
     expect(script).toContain("CODEX_WEIXIN_CONSOLE_PORT");
     expect(script).toContain("CODEX_DESKTOP_APP_ID");
     expect(script).toContain("Get-StartApps");
     expect(script).toContain("Get-NetTCPConnection");
     expect(script).toContain("openclaw-weixin\\accounts.json");
+    expect(script).toContain("Run npm run login to scan a Weixin QR code");
     expect(script).toContain("dist\\cli.js");
     expect(script).toContain("Send-CodexDesktopInput.ps1");
     expect(script).toContain("Set-CodexDesktopModel.ps1");

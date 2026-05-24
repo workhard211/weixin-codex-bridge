@@ -17,6 +17,7 @@ state/
 
 # Codex/OpenClaw local planning and machine instructions
 AGENTS.md
+.workflow/
 docs/superpowers/
 
 # Logs and databases

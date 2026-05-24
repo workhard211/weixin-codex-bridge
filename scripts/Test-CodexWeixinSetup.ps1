@@ -21,12 +21,64 @@ if ([string]::IsNullOrWhiteSpace($ProjectRoot)) {
     $ProjectRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..")).Path
 }
 
+function Import-BridgeEnv {
+    param(
+        [string]$EnvPath
+    )
+
+    if ([string]::IsNullOrWhiteSpace($EnvPath) -or -not (Test-Path -LiteralPath $EnvPath)) {
+        return
+    }
+
+    foreach ($line in Get-Content -LiteralPath $EnvPath -Encoding UTF8) {
+        $trimmed = $line.Trim()
+        if ([string]::IsNullOrWhiteSpace($trimmed) -or $trimmed.StartsWith("#")) {
+            continue
+        }
+
+        $separator = $trimmed.IndexOf("=")
+        if ($separator -le 0) {
+            continue
+        }
+
+        $name = $trimmed.Substring(0, $separator).Trim()
+        if ($name -notmatch "^[A-Za-z_][A-Za-z0-9_]*$") {
+            continue
+        }
+
+        # Keep this aligned with dotenv: .env is a default and does not override exported shell values.
+        if (-not [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name, "Process"))) {
+            continue
+        }
+
+        $value = $trimmed.Substring($separator + 1)
+        if ($value.Length -ge 2) {
+            $first = $value.Substring(0, 1)
+            $last = $value.Substring($value.Length - 1, 1)
+            if (($first -eq '"' -and $last -eq '"') -or ($first -eq "'" -and $last -eq "'")) {
+                $value = $value.Substring(1, $value.Length - 2)
+            }
+        }
+
+        [Environment]::SetEnvironmentVariable($name, $value, "Process")
+    }
+}
+
+$bridgeEnvPath = $env:CODEX_WEIXIN_ENV_FILE
+if ([string]::IsNullOrWhiteSpace($bridgeEnvPath)) {
+    $bridgeEnvPath = Join-Path $ProjectRoot ".env"
+}
+Import-BridgeEnv -EnvPath $bridgeEnvPath
+
 if ([string]::IsNullOrWhiteSpace($OpenClawStateRoot)) {
-    if (-not [string]::IsNullOrWhiteSpace($env:OPENCLAW_STATE_DIR)) {
+    if (-not [string]::IsNullOrWhiteSpace($env:CODEX_WEIXIN_AUTH_ROOT)) {
+        $OpenClawStateRoot = $env:CODEX_WEIXIN_AUTH_ROOT
+    }
+    elseif (-not [string]::IsNullOrWhiteSpace($env:OPENCLAW_STATE_DIR)) {
         $OpenClawStateRoot = $env:OPENCLAW_STATE_DIR
     }
     else {
-        $OpenClawStateRoot = Join-Path $env:USERPROFILE ".openclaw"
+        $OpenClawStateRoot = Join-Path $StateRoot "weixin-auth"
     }
 }
 
@@ -125,6 +177,19 @@ $cliPath = Join-Path $resolvedProjectRoot "dist\cli.js"
 $inputScriptPath = Join-Path $resolvedProjectRoot "scripts\Send-CodexDesktopInput.ps1"
 $modelScriptPath = Join-Path $resolvedProjectRoot "scripts\Set-CodexDesktopModel.ps1"
 $accountIndexPath = Join-Path $resolvedOpenClawStateRoot "openclaw-weixin\accounts.json"
+$legacyOpenClawStateRoot = Join-Path $env:USERPROFILE ".openclaw"
+$legacyAccountIndexPath = Join-Path $legacyOpenClawStateRoot "openclaw-weixin\accounts.json"
+$accountIndexCandidates = @($accountIndexPath)
+if ($legacyAccountIndexPath -ne $accountIndexPath) {
+    $accountIndexCandidates += $legacyAccountIndexPath
+}
+$foundAccountIndexPath = $null
+foreach ($candidate in $accountIndexCandidates) {
+    if (Test-Path -LiteralPath $candidate) {
+        $foundAccountIndexPath = $candidate
+        break
+    }
+}
 
 Add-Check `
     -Name "Bridge project root" `
@@ -152,7 +217,7 @@ Add-Check `
     -Ok (Test-Path -LiteralPath $cliPath) `
     -Severity "warn" `
     -Detail $cliPath `
-    -Fix "Run npm run build before starting the bridge."
+    -Fix "Run npm run build, or use npm run login/npm start which build automatically."
 
 Add-Check `
     -Name "Node.js command" `
@@ -169,23 +234,23 @@ Add-Check `
     -Fix "Install npm with Node.js and reopen PowerShell."
 
 Add-Check `
-    -Name "OPENCLAW_STATE_DIR account index" `
-    -Ok (Test-Path -LiteralPath $accountIndexPath) `
+    -Name "Weixin auth account index" `
+    -Ok ($null -ne $foundAccountIndexPath) `
     -Severity "error" `
-    -Detail $accountIndexPath `
-    -Fix "Finish Weixin/OpenClaw login, then set OPENCLAW_STATE_DIR to the root containing openclaw-weixin\accounts.json."
+    -Detail ($(if ($foundAccountIndexPath) { $foundAccountIndexPath } else { $accountIndexPath })) `
+    -Fix "Run npm run login to scan a Weixin QR code, or set OPENCLAW_STATE_DIR to an existing OpenClaw state root."
 
 $accountCount = 0
-if (Test-Path -LiteralPath $accountIndexPath) {
+if ($null -ne $foundAccountIndexPath) {
     try {
-        $parsedAccounts = @(Get-Content -LiteralPath $accountIndexPath -Raw -Encoding UTF8 | ConvertFrom-Json)
+        $parsedAccounts = @(Get-Content -LiteralPath $foundAccountIndexPath -Raw -Encoding UTF8 | ConvertFrom-Json)
         $accountCount = $parsedAccounts.Count
         Add-Check `
             -Name "Weixin account count" `
             -Ok ($accountCount -gt 0) `
             -Severity "error" `
             -Detail "$accountCount account(s)" `
-            -Fix "Log in at least one Weixin/OpenClaw bot account."
+            -Fix "Run npm run login to log in at least one Weixin bot account."
     }
     catch {
         Add-Check `
@@ -322,9 +387,11 @@ if ([string]::IsNullOrWhiteSpace($codexCommandPath)) {
 
 $suggestedEnv = [ordered]@{
     CODEX_WEIXIN_CWD                  = $resolvedCodexWorkspace
+    CODEX_WEIXIN_ENV_FILE             = $bridgeEnvPath
     CODEX_WEIXIN_STATE_ROOT           = $StateRoot
     CODEX_WEIXIN_LOG_ROOT             = $StateRoot
-    OPENCLAW_STATE_DIR                = $resolvedOpenClawStateRoot
+    CODEX_WEIXIN_AUTH_ROOT            = $resolvedOpenClawStateRoot
+    OPENCLAW_STATE_DIR                = $env:OPENCLAW_STATE_DIR
     CODEX_WEIXIN_DELIVERY_MODE        = "desktop-ui"
     CODEX_WEIXIN_CLI_FALLBACK         = "false"
     CODEX_WEIXIN_CONSOLE_PORT         = "$ConsolePort"
@@ -343,7 +410,7 @@ $result = [ordered]@{
     codexWorkspace        = $resolvedCodexWorkspace
     stateRoot             = $StateRoot
     openClawStateRoot     = $resolvedOpenClawStateRoot
-    accountIndexPath      = $accountIndexPath
+    accountIndexPath      = $(if ($foundAccountIndexPath) { $foundAccountIndexPath } else { $accountIndexPath })
     accountCount          = $accountCount
     bridgeProcessCount    = $bridgeProcesses.Count
     codexWindowCount      = $codexWindows.Count

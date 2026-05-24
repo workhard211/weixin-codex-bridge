@@ -3,7 +3,7 @@
 [![ci](https://github.com/workhard211/weixin-codex-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/workhard211/weixin-codex-bridge/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-A standalone bridge from Weixin direct messages to Codex. It reads an existing Weixin/OpenClaw bot account, polls text messages, sends the original text to Codex, and returns plain-text replies to Weixin.
+A standalone bridge from Weixin direct messages to Codex. It includes built-in Weixin bot QR login, polls text messages, sends the original text to Codex, and returns plain-text replies to Weixin.
 
 Chinese version: [README.md](./README.md)
 
@@ -16,16 +16,16 @@ Language policy: Weixin-facing replies and the local console default to Simplifi
 - Supports Codex Desktop UI delivery and a Codex CLI mode.
 - Starts an optional local console for status and retry operations.
 
-This project does not use OpenClaw channel routing, bindings, or multi-agent dispatch. It only reuses locally stored Weixin/OpenClaw account credentials.
+This project does not use OpenClaw channel routing, bindings, or multi-agent dispatch. New users log in directly through this project; old OpenClaw credentials are only read as a compatibility fallback.
 
 ## How It Differs From Other Bridges
 
-- **Not an OpenClaw routing plugin**: it does not take over OpenClaw channel routing, bindings, or multi-agent dispatch, and it does not rewrite OpenClaw configuration. It only uses an already logged-in Weixin bot account as a read-only message source.
+- **Not an OpenClaw routing plugin**: it does not take over OpenClaw channel routing, bindings, or multi-agent dispatch, and it does not rewrite OpenClaw configuration. Weixin bot login is handled by this project's own `npm run login` command.
 - **Not just a CLI forwarder**: Desktop UI delivery is the default, so Weixin messages can land in the live Codex Desktop session. Codex CLI mode is still available when a shell-based workflow is preferred.
 - **No prompt wrapping**: the text sent to Codex is the original Weixin message text. The bridge does not prepend sender names, timestamps, routing hints, markdown wrappers, or hidden control instructions.
 - **Per-Weixin-conversation state**: each Weixin conversation has its own local state, Codex conversation binding, failed-task queue, and transcript mirror, which makes delivery issues auditable.
 - **Built for Desktop automation reliability**: Desktop delivery does not rely only on fixed coordinates. The scripts include UI Automation lookup, DPI-aware coordinates, screenshot detection, calibration caching, and a pre-send detector.
-- **Local-first and open-source friendly**: runtime state stays in a user-configured local directory, credentials are reused read-only, and the repo includes setup preflight checks, public-release checks, CI, failed-task handling, and a local console.
+- **Local-first and open-source friendly**: runtime state and new login credentials stay in a user-configured local directory, old OpenClaw credentials are read-only compatibility input, and the repo includes setup preflight checks, public-release checks, CI, failed-task handling, and a local console.
 
 ## Architecture
 
@@ -45,14 +45,14 @@ flowchart LR
 
 - Node.js `>= 22`
 - Codex Desktop or Codex CLI installed and authenticated
-- A local bot account credential set created by a Weixin/OpenClaw login
+- Weixin bot account credentials created by this project's built-in QR login
 - Windows 10/11 is recommended for Desktop UI automation; CLI mode can run in a more generic shell environment
 
 ## Do Users Need OpenClaw First?
 
-For the current version, yes: a first-time user needs to complete the Tencent Weixin OpenClaw login once so the machine has bot account credentials such as `openclaw-weixin/accounts.json`. At runtime, this bridge only reads those credentials. It does not take over OpenClaw routing, and OpenClaw or an older bridge does not need to stay running.
+No. The current version includes a Weixin bot QR login flow: run `npm run login`, scan and confirm in Weixin, and the project saves credentials into its own state directory, for example `CODEX_WEIXIN_STATE_ROOT\weixin-auth\openclaw-weixin\accounts.json`.
 
-In short: **initial setup reuses OpenClaw's login and credential path; daily bridge operation does not require OpenClaw to be running**. The launcher also checks ports `18789` and `8787` to avoid colliding with OpenClaw or an older bridge.
+`OPENCLAW_STATE_DIR` is now only a compatibility option. Existing users can point it at an old OpenClaw `openclaw-weixin` state directory, while new users can log in through this project without downloading or starting OpenClaw separately. The launcher still checks ports `18789` and `8787` to avoid colliding with OpenClaw or an older bridge.
 
 ## Quick Start
 
@@ -63,28 +63,23 @@ npm install
 Copy-Item .env.example .env
 ```
 
-Edit `.env` and set at least:
+Edit `.env`; usually the only value you need to confirm first is the Codex workspace:
 
 ```dotenv
 CODEX_WEIXIN_CWD=C:\work\my-codex-project
-CODEX_WEIXIN_STATE_ROOT=C:\work\codex-weixin-state
-OPENCLAW_STATE_DIR=C:\path\to\openclaw-state
 CODEX_WEIXIN_DELIVERY_MODE=desktop-ui
-CODEX_WEIXIN_CONSOLE_PORT=18790
 ```
 
-Note: the app does not load `.env` automatically. Use your shell, terminal profile, process manager, or CI secrets to export the same values. `.env.example` is a public template only; never commit real credentials.
+Note: the app automatically loads `.env` from the current directory. Values already exported by your shell, terminal profile, process manager, or CI secrets take priority. `.env.example` is a public template only; never commit real credentials.
 
 Temporary PowerShell example:
 
 ```powershell
 $env:CODEX_WEIXIN_CWD = "C:\work\my-codex-project"
-$env:CODEX_WEIXIN_STATE_ROOT = "C:\work\codex-weixin-state"
-$env:OPENCLAW_STATE_DIR = "C:\path\to\openclaw-state"
 $env:CODEX_WEIXIN_DELIVERY_MODE = "desktop-ui"
 
-npm run build
-node dist/cli.js
+npm run login
+npm start
 ```
 
 To bypass Desktop UI and use Codex CLI:
@@ -92,7 +87,7 @@ To bypass Desktop UI and use Codex CLI:
 ```powershell
 $env:CODEX_WEIXIN_DELIVERY_MODE = "codex-cli"
 $env:CODEX_WEIXIN_CLI_FALLBACK = "false"
-node dist/cli.js
+npm start
 ```
 
 ## Key Environment Variables
@@ -100,8 +95,10 @@ node dist/cli.js
 | Variable | Purpose |
 | --- | --- |
 | `CODEX_WEIXIN_CWD` | Workspace directory where Codex should run. |
-| `OPENCLAW_STATE_DIR` | Root directory for read-only Weixin/OpenClaw account state. |
-| `OPENCLAW_CONFIG_PATH` | Optional override for the OpenClaw config file. |
+| `CODEX_WEIXIN_ENV_FILE` | Optional shell-level override for a non-default `.env` file path. |
+| `CODEX_WEIXIN_AUTH_ROOT` | Optional Weixin credential root; defaults to `CODEX_WEIXIN_STATE_ROOT\weixin-auth`. |
+| `OPENCLAW_STATE_DIR` | Optional compatibility root for existing OpenClaw `openclaw-weixin` account state. |
+| `OPENCLAW_CONFIG_PATH` | Optional source for legacy OpenClaw route tags. |
 | `CODEX_WEIXIN_ACCOUNT_ID` | Optional Weixin account ID; the first saved account is used when unset. |
 | `CODEX_WEIXIN_STATE_ROOT` | Bridge runtime state, logs, and local queue directory. |
 | `CODEX_WEIXIN_LOG_ROOT` | Backward-compatible alias; if both roots are set, this value wins. |
@@ -123,11 +120,11 @@ npm run setup-check
 powershell -ExecutionPolicy Bypass -File scripts\Test-CodexWeixinSetup.ps1
 ```
 
-It performs read-only checks for Node/npm, the built entrypoint, Weixin account index, Codex Desktop AppID, visible Codex window, desktop input/model scripts, console status, and ports `18789`/`8787`. Add `-Json` when another tool should consume the report.
+It also reads the current directory's `.env`, then performs read-only checks for Node/npm, the built entrypoint, Weixin account index, Codex Desktop AppID, visible Codex window, desktop input/model scripts, console status, and ports `18789`/`8787`. Add `-Json` when another tool should consume the report.
 
 ## Most Common Configuration Failures
 
-- Wrong `OPENCLAW_STATE_DIR`: diagnostics will show a missing `Weixin account index`. Complete the Weixin/OpenClaw login first, then point this to the state root that contains `openclaw-weixin/accounts.json`.
+- Missing Weixin credentials: run `npm run login` and scan the QR code. If reusing old OpenClaw credentials, set `OPENCLAW_STATE_DIR` to the state root that contains `openclaw-weixin/accounts.json`.
 - Missing `CODEX_WEIXIN_CWD`: Codex may run in the wrong project or fail immediately. Set it to the real workspace Codex should operate in.
 - `CODEX_WEIXIN_MAX_PARALLEL>1` in `desktop-ui`: this is ignored because one Codex Desktop window must stay single-lane.
 - Wrong `CODEX_WEIXIN_DESKTOP_INPUT_SCRIPT` or `CODEX_WEIXIN_DESKTOP_MODEL_SCRIPT`: input detection, paste, or model switching will fail.
@@ -139,6 +136,8 @@ The console `Run Diagnostics` action now lists these configuration checks with f
 ## NPM Scripts
 
 ```powershell
+npm run login          # Build automatically and scan a Weixin bot QR code
+npm start              # Build automatically and start the bridge
 npm run build          # Compile TypeScript into dist/
 npm test -- --run      # Run tests
 npm run setup-check    # Run local machine setup preflight
@@ -154,8 +153,8 @@ npm run public-check   # Run privacy and repository hygiene checks
 
 ## References
 
-- Tencent Weixin OpenClaw installer: <https://www.npmjs.com/package/@tencent-weixin/openclaw-weixin-cli>
-- Tencent Weixin OpenClaw plugin: <https://www.npmjs.com/package/@tencent-weixin/openclaw-weixin>
+- Tencent Weixin OpenClaw installer (optional legacy-credential compatibility reference only): <https://www.npmjs.com/package/@tencent-weixin/openclaw-weixin-cli>
+- Tencent Weixin OpenClaw plugin (optional legacy credential format reference only): <https://www.npmjs.com/package/@tencent-weixin/openclaw-weixin>
 - ACPX: <https://www.npmjs.com/package/acpx>
 
 ## License
