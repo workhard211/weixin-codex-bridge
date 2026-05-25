@@ -385,6 +385,20 @@ if ([string]::IsNullOrWhiteSpace($codexCommandPath)) {
     }
 }
 
+$suggestedDeliveryMode = if ([string]::IsNullOrWhiteSpace($env:CODEX_WEIXIN_DELIVERY_MODE)) {
+    "desktop-ui"
+}
+else {
+    $env:CODEX_WEIXIN_DELIVERY_MODE
+}
+
+$suggestedCliFallback = if ([string]::IsNullOrWhiteSpace($env:CODEX_WEIXIN_CLI_FALLBACK)) {
+    "false"
+}
+else {
+    $env:CODEX_WEIXIN_CLI_FALLBACK
+}
+
 $suggestedEnv = [ordered]@{
     CODEX_WEIXIN_CWD                  = $resolvedCodexWorkspace
     CODEX_WEIXIN_ENV_FILE             = $bridgeEnvPath
@@ -392,8 +406,8 @@ $suggestedEnv = [ordered]@{
     CODEX_WEIXIN_LOG_ROOT             = $StateRoot
     CODEX_WEIXIN_AUTH_ROOT            = $resolvedOpenClawStateRoot
     OPENCLAW_STATE_DIR                = $env:OPENCLAW_STATE_DIR
-    CODEX_WEIXIN_DELIVERY_MODE        = "desktop-ui"
-    CODEX_WEIXIN_CLI_FALLBACK         = "false"
+    CODEX_WEIXIN_DELIVERY_MODE        = $suggestedDeliveryMode
+    CODEX_WEIXIN_CLI_FALLBACK         = $suggestedCliFallback
     CODEX_WEIXIN_CONSOLE_PORT         = "$ConsolePort"
     CODEX_DESKTOP_APP_ID              = $detectedCodexAppId
     CODEX_WEIXIN_DESKTOP_INPUT_SCRIPT = $inputScriptPath

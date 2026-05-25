@@ -164,6 +164,8 @@ describe("desktop PowerShell automation scripts", () => {
     expect(script).toContain("consoleSummary");
     expect(script).toContain("configRiskCount");
     expect(script).toContain("suggestedEnv");
+    expect(script).toContain("$suggestedDeliveryMode");
+    expect(script).not.toContain('CODEX_WEIXIN_DELIVERY_MODE        = "desktop-ui"');
     expect(script).toContain("checks");
     expect(script).toContain("ConvertTo-Json");
     expect(script).toContain("does not write credentials");
@@ -175,5 +177,29 @@ describe("desktop PowerShell automation scripts", () => {
     expect(script).not.toContain("Codex Weixin bridge setup preflight");
     expect(script).not.toContain("Suggested environment values:");
     expect(pkg.scripts["setup-check"]).toContain("Test-CodexWeixinSetup.ps1");
+  });
+
+  it("provides a beginner Windows setup script that installs and initializes without OpenClaw", () => {
+    const script = readScript("Setup-CodexWeixinBridge.ps1");
+    const pkg = JSON.parse(fs.readFileSync(path.join(projectRoot, "package.json"), "utf8"));
+
+    expect(script).toContain("Assert-NodeVersion");
+    expect(script).toContain("node --version");
+    expect(script).toContain('@("npm", "install")');
+    expect(script).toContain('"npm", "run", "init"');
+    expect(script).toContain('"npm", "run", "setup-check", "--", "-ConsolePort", "$ConsolePort"');
+    expect(script).toContain('@("npm", "run", "login")');
+    expect(script).toContain("[switch]$SkipLogin");
+    expect(script).toContain("-Workspace");
+    expect(script).toContain("-DeliveryMode");
+    expect(script).toContain("-ConsolePort");
+    expect(script).toContain("-ConfigFile");
+    expect(script).toContain('$env:CODEX_WEIXIN_ENV_FILE = $ResolvedConfigFile');
+    expect(script).toContain('"--config-file", $ResolvedConfigFile');
+    expect(script).toContain("-NoStart");
+    expect(script).toContain('@("npm", "start")');
+    expect(script).not.toContain("openclaw");
+    expect(script).not.toContain("OpenClaw");
+    expect(pkg.scripts.setup).toContain("Setup-CodexWeixinBridge.ps1");
   });
 });

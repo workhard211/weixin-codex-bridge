@@ -7,7 +7,9 @@
   "files": [
     ".env.example",
     ".github",
+    "CHANGELOG.md",
     "CONTRIBUTING.md",
+    "docs/FAQ.md",
     "docs/open-source-checklist.md",
     "LICENSE",
     "README.en.md",
@@ -27,6 +29,7 @@
     "test": "vitest",
     "preinit": "npm run build",
     "init": "node dist/cli.js init",
+    "setup": "powershell -ExecutionPolicy Bypass -File scripts/Setup-CodexWeixinBridge.ps1",
     "prestart": "npm run build",
     "start": "node dist/cli.js start",
     "prelogin": "npm run build",

@@ -13,6 +13,7 @@ describe("package scripts", () => {
     expect(pkg.scripts.login).toBe("node dist/cli.js login");
     expect(pkg.scripts.start).toBe("node dist/cli.js start");
     expect(pkg.scripts.serve).toBe("node dist/cli.js serve");
+    expect(pkg.scripts.setup).toContain("scripts/Setup-CodexWeixinBridge.ps1");
   });
 
   it("prebuilds beginner-facing commands so users do not need a separate build step", () => {
@@ -31,7 +32,9 @@ describe("package scripts", () => {
     expect(pkg.files).toEqual(expect.arrayContaining([
       ".env.example",
       ".github",
+      "CHANGELOG.md",
       "docs/open-source-checklist.md",
+      "docs/FAQ.md",
       "scripts",
       "src",
       "test"

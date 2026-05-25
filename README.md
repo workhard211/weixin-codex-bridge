@@ -65,6 +65,14 @@ npm run login
 npm start
 ```
 
+Windows 用户也可以使用一键 setup 脚本：
+
+```powershell
+npm run setup -- -Workspace "C:\work\my-codex-project" -NoStart
+npm run login
+npm start
+```
+
 `npm run init` 会生成或更新当前目录的 `.env`，通常只需要确认 Codex 工作目录；其他值都有默认值。也可以手动复制模板再编辑：`Copy-Item .env.example .env`。
 
 说明：项目从当前目录自动加载 `.env`，shell、Windows Terminal profile、进程管理器或 CI secret 中已经存在的环境变量会优先生效。`.env.example` 只是公开模板，真实凭据不要提交。
@@ -80,10 +88,18 @@ npm start
 如果你要绕开 Desktop UI，改用 Codex CLI：
 
 ```powershell
-$env:CODEX_WEIXIN_DELIVERY_MODE = "codex-cli"
-$env:CODEX_WEIXIN_CLI_FALLBACK = "false"
+npm run init -- --delivery-mode codex-cli
 npm start
 ```
+
+## 支持范围
+
+| 环境 | 支持情况 |
+| --- | --- |
+| Windows 10/11 + Codex Desktop | 完整支持，推荐给普通客户 |
+| Windows 10/11 + Codex CLI | 支持，使用 `codex-cli` 模式 |
+| macOS/Linux + Codex CLI | 代码层面可运行 CLI 模式，但桌面自动化脚本不是主支持目标 |
+| macOS/Linux + Codex Desktop UI 自动投递 | 暂不作为完整支持目标 |
 
 ## 常用环境变量
 
@@ -131,6 +147,7 @@ powershell -ExecutionPolicy Bypass -File scripts\Test-CodexWeixinSetup.ps1
 ## NPM 脚本
 
 ```powershell
+npm run setup          # Windows 一键安装依赖、初始化、预检、登录并启动
 npm run init           # 自动编译并生成/更新 .env
 npm run login          # 自动编译并扫码登录微信 bot
 npm start              # 自动编译并启动桥接器
@@ -146,6 +163,8 @@ npm run public-check   # 发布前隐私和仓库卫生检查
 - `dist/`、`node_modules/`、`.local/` 和常见 debug 产物默认被忽略。
 - 发布或开 PR 前运行 `npm run public-check`。
 - 清单见 [docs/open-source-checklist.md](./docs/open-source-checklist.md)。
+- 常见问题见 [docs/FAQ.md](./docs/FAQ.md)。
+- 版本变化见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ## 参考资料
 

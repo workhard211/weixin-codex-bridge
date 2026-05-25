@@ -65,6 +65,14 @@ npm run login
 npm start
 ```
 
+Windows users can also use the one-step setup helper:
+
+```powershell
+npm run setup -- -Workspace "C:\work\my-codex-project" -NoStart
+npm run login
+npm start
+```
+
 `npm run init` creates or updates the current directory's `.env`; usually the only value you need to confirm is the Codex workspace. You can also copy and edit the template manually: `Copy-Item .env.example .env`.
 
 Note: the app automatically loads `.env` from the current directory. Values already exported by your shell, terminal profile, process manager, or CI secrets take priority. `.env.example` is a public template only; never commit real credentials.
@@ -80,10 +88,18 @@ npm start
 To bypass Desktop UI and use Codex CLI:
 
 ```powershell
-$env:CODEX_WEIXIN_DELIVERY_MODE = "codex-cli"
-$env:CODEX_WEIXIN_CLI_FALLBACK = "false"
+npm run init -- --delivery-mode codex-cli
 npm start
 ```
+
+## Support Matrix
+
+| Environment | Support |
+| --- | --- |
+| Windows 10/11 + Codex Desktop | Full support, recommended for normal users |
+| Windows 10/11 + Codex CLI | Supported with `codex-cli` mode |
+| macOS/Linux + Codex CLI | CLI mode can run from the code path, but it is not the primary support target |
+| macOS/Linux + Codex Desktop UI automation | Not a full support target yet |
 
 ## Key Environment Variables
 
@@ -131,6 +147,7 @@ The console `Run Diagnostics` action now lists these configuration checks with f
 ## NPM Scripts
 
 ```powershell
+npm run setup          # Windows helper: install deps, init, preflight, login, and start
 npm run init           # Build automatically and create/update .env
 npm run login          # Build automatically and scan a Weixin bot QR code
 npm start              # Build automatically and start the bridge
@@ -146,6 +163,8 @@ npm run public-check   # Run privacy and repository hygiene checks
 - `dist/`, `node_modules/`, `.local/`, and common debug artifacts are ignored by default.
 - Run `npm run public-check` before publishing or opening a pull request.
 - See [docs/open-source-checklist.md](./docs/open-source-checklist.md).
+- See [docs/FAQ.md](./docs/FAQ.md) for common issues.
+- See [CHANGELOG.md](./CHANGELOG.md) for release notes.
 
 ## References
 
